@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>D3.js 散點圖</title>
+    <title>D3.js scatter plot with hover</title>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <style>
         #tooltip {
@@ -18,29 +18,45 @@
             pointer-events: none;
             opacity: 0;
         }
+
+        svg {
+            display: block;
+        }
+
+        .axis-label {
+            fill: #000;
+            font-size: 12px;
+            font-family: sans-serif;
+        }
     </style>
 </head>
 <body>
     
     <script>
-        // 设定SVG大小
+        // 設定 SVG 大小
         var margin = {top: 10, right: 30, bottom: 30, left: 60},
-            width = 860 - margin.left - margin.right,
-            height = 460 - margin.top - margin.bottom;
+            width = 750 - margin.left - margin.right,
+            height = 350 - margin.top - margin.bottom;
 
-        // 添加SVG到body
+        // 加入 svg 到 body
         var svg = d3.select("body").append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        
+        var tooltip = d3.select("body").append("div")
+            .attr("id", "tooltip")
+            .style("opacity", 0);
 
-        // 加载CSV数据
+        // 設定為自己字的檔名
+        var myImg = "114598033.png";
+        
         d3.csv("results.csv").then(function(data) {
 
-            // 设置X轴比例尺
+            // 設定x軸比例尺
             var x = d3.scaleLinear()
-                .domain([0, 1]) // ssim
+                .domain([0.3, 1]) // ssim
                 .range([ 0, width ]);
             svg.append("g")
                 .attr("transform", "translate(0," + height + ")")
@@ -49,7 +65,7 @@
             svg.append("g")
                 .attr("transform", "translate(0," + height + ")")
                 .call(d3.axisBottom(x))
-            // 添加X軸標籤
+            // 加入x軸標籤
             .append("text")
                 .attr("class", "axis-label")
                 .attr("x", width) // 將標籤放置在軸的末端
@@ -57,17 +73,17 @@
                 .style("text-anchor", "end") // 文本對齊方式
                 .text("SSIM");
 
-            // 设置Y轴比例尺
+            // 設定y軸比例尺
             var y = d3.scaleLinear()
-                .domain([0, 1]) // lpips
+                .domain([0, 0.7]) // lpips
                 .range([ height, 0]);
             svg.append("g")
                 .call(d3.axisLeft(y));
 
-            // 添加Y軸以及標籤
+            // 加入Y軸以及標籤
             svg.append("g")
                 .call(d3.axisLeft(y))
-            // 添加Y軸標籤
+            // 加入y軸標籤
             .append("text")
                 .attr("class", "axis-label")
                 .attr("transform", "rotate(-90)") // 旋轉標籤
@@ -80,57 +96,59 @@
                 return d.SSIM >= 0 && d.SSIM <=1 && d.LPIPS >=0 && d.LPIPS <= 1;
             });
 
-            // 创建散点
-            svg.append('g')
-                .selectAll("dot")
+            // ================= 修改開始 =================
+            // 改用 g (群組) 來包裝「圓形」與「文字」，這樣座標只需設定一次
+            var node = svg.append('g')
+                .selectAll("g.node")
                 .data(filteredData)
                 .enter()
-                .append("circle")
-                  .attr("cx", function (d) { return x(d.SSIM); } )
-                  .attr("cy", function (d) { return y(d.LPIPS); } )
-                  .attr("r", 6)
-                  .style("fill", "#69b3a2")
-            svg.append('g')
-                .selectAll("text")
-                .data(filteredData)
-                .enter()
-                .append("text")
-                  .attr("x", function (d) { return x(d.SSIM) + 8; }) // 右側偏移
-                  .attr("y", function (d) { return y(d.LPIPS) - 8; }) // 上方偏移
-                  .text(function(d) { return d.Student; }) // 顯示學號
-                  .attr("font-size", "12px")
-                  .attr("fill", "black")
-                  .style("text-anchor", "start"); // 確保標籤從左側開始
-                        // 创建工具提示
-                        var tooltip = d3.select("body").append("div")
-                            .attr("id", "tooltip")
-                            .style("opacity", 0);
+                .append("g")
+                .attr("class", "node")
+                .attr("transform", function(d) { return "translate(" + x(d.SSIM) + "," + y(d.LPIPS) + ")"; })
+                .style("cursor", "pointer");
 
+            // 1. 畫圓 (將半徑 r 從 7 放大到 22)
+            node.append("circle")
+                .attr("r", 22) 
+                .style("fill", function(d) {
+                    return d.Student === myImg ? "#ff0000" : "#187C19"; 
+                })
+                .style("stroke", "white")
+                .style("stroke-width", "2px");
 
-            svg.selectAll("circle")
-                .on("mouseover", function(d) {
+            // 2. 加入學號文字
+            node.append("text")
+                .attr("text-anchor", "middle") // 水平置中
+                .attr("dy", "0.35em") // 垂直微調置中
+                .style("fill", "white") // 白色字體配紅綠底較為清晰
+                .style("font-size", "9px") // 文字大小
+                .style("font-family", "sans-serif")
+                .text(function(d) { 
+                    // 將檔名中的 .png 去除，只留數字，避免文字超出圓圈
+                    return d.Student.replace(".png", ""); 
+                });
+
+            // 3. Tooltip 綁定到整個 node 群組上
+            node.on("mouseover", function(d) {
                     tooltip.transition()
                         .duration(200)
                         .style("opacity", .9);
-                    tooltip.html("<img src='word/" + d.Student + "' alt='Handwriting' width='120' height='120'>")
-                        .style("left", (d3.event.pageX) + "px")
-                        .style("top", (d3.event.pageY - 28) + "px");
+                    
+                    tooltip.html(
+                        "<div style='margin-bottom:5px; font-weight:bold;'>" + d.Student + "</div>" +
+                        "<img src='img/" + d.Student + "' alt='Handwriting' width='120' height='120' style='border:1px solid #ccc;'>"
+                    )
+                    .style("left", (d3.event.pageX - 140) + "px")
+                    .style("top", (d3.event.pageY - 28) + "px");
                 })
                 .on("mouseout", function(d) {
                     tooltip.transition()
                         .duration(500)
                         .style("opacity", 0);
                 });
+            // ================= 修改結束 =================
         });
 
     </script>
 </body>
 </html>
-
-<style>
-    .axis-label {
-    fill: #000; /* 文本顏色 */
-    font-size: 12px; /* 文本大小 */
-    font-family: sans-serif; /* 文本字體 */
-}
-</style>
