@@ -96,8 +96,6 @@
                 return d.SSIM >= 0 && d.SSIM <=1 && d.LPIPS >=0 && d.LPIPS <= 1;
             });
 
-            // ================= 修改開始 =================
-            // 改用 g (群組) 來包裝「圓形」與「文字」，這樣座標只需設定一次
             var node = svg.append('g')
                 .selectAll("g.node")
                 .data(filteredData)
@@ -107,26 +105,25 @@
                 .attr("transform", function(d) { return "translate(" + x(d.SSIM) + "," + y(d.LPIPS) + ")"; })
                 .style("cursor", "pointer");
 
-            // 1. 畫圓 (將半徑 r 從 7 放大到 22)
+            // 1. 畫圓 (將半徑 r 縮小到 14)
             node.append("circle")
-                .attr("r", 22) 
+                .attr("r", 14) 
                 .style("fill", function(d) {
                     return d.Student === myImg ? "#ff0000" : "#187C19"; 
                 })
                 .style("stroke", "white")
-                .style("stroke-width", "2px");
+                .style("stroke-width", "1.5px");
 
-            // 2. 加入學號文字
-            node.append("text")
-                .attr("text-anchor", "middle") // 水平置中
-                .attr("dy", "0.35em") // 垂直微調置中
-                .style("fill", "white") // 白色字體配紅綠底較為清晰
-                .style("font-size", "9px") // 文字大小
-                .style("font-family", "sans-serif")
-                .text(function(d) { 
-                    // 將檔名中的 .png 去除，只留數字，避免文字超出圓圈
-                    return d.Student.replace(".png", ""); 
-                });
+            // 2. 加入圖片
+            node.append("image")
+                .attr("xlink:href", function(d) { 
+                    return "img/" + d.Student; // 讀取圖片路徑
+                }) 
+                .attr("x", -10) // 往左平移一半寬度以置中
+                .attr("y", -10) // 往上平移一半高度以置中
+                .attr("width", 20) // 圖片寬度
+                .attr("height", 20) // 圖片高度
+                .style("pointer-events", "none"); // 確保滑鼠事件由群組接管
 
             // 3. Tooltip 綁定到整個 node 群組上
             node.on("mouseover", function(d) {
@@ -146,7 +143,7 @@
                         .duration(500)
                         .style("opacity", 0);
                 });
-            // ================= 修改結束 =================
+            
         });
 
     </script>
